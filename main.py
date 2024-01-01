@@ -108,33 +108,20 @@ class DirectoryHelper:
         files_to_delete = []
         print(sorted_list)
         for i in range(1, len(sorted_list)):
-            if not daily_files_counter == daily:
-                if int(current[15:17]) != int(sorted_list[i][15:17]):
-                    current = sorted_list[i]
-                    daily_files_counter += 1
-                    continue
-                else:
-                    files_to_delete.append(current)
-                    current = sorted_list[i]
-                    continue
-            elif not monthly_files_counter == monthly:
-                if int(current[12:14]) != int(sorted_list[i][12:14]):
-                    current = sorted_list[i]
-                    monthly_files_counter += 1
-                    continue
-                else:
-                    files_to_delete.append(current)
-                    current = sorted_list[i]
-                    continue
-            elif not yearly_files_counter == yearly:
-                if int(current[7:11]) != int(sorted_list[i][7:11]):
-                    current = sorted_list[i]
-                    yearly_files_counter += 1
-                    continue
-                else:
-                    files_to_delete.append(current)
-                    current = sorted_list[i]
-                    continue
+            if not daily_files_counter == daily and int(current[15:17]) != int(sorted_list[i][15:17]):
+                current = sorted_list[i]
+                daily_files_counter += 1
+                continue
+
+            elif not monthly_files_counter == monthly and int(current[12:14]) != int(sorted_list[i][12:14]):
+                current = sorted_list[i]
+                monthly_files_counter += 1
+                continue
+
+            elif not yearly_files_counter == yearly and int(current[7:11]) != int(sorted_list[i][7:11]):
+                current = sorted_list[i]
+                yearly_files_counter += 1
+                continue
             else:
                 files_to_delete.append(current)
                 current = sorted_list[i]
