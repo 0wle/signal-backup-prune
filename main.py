@@ -101,7 +101,6 @@ class DirectoryHelper:
     def filter_files_for_deletion(yearly, monthly, daily, file_list):
         file_list.sort()
         sorted_list = list(reversed(file_list))
-        # filter all multiple days first
         current = sorted_list[0]
         daily_files_counter = 0
         monthly_files_counter = 0
