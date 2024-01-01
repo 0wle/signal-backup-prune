@@ -22,6 +22,64 @@ class InvalidPattern(Exception):
         return repr(self.value)
 
 
+class ArgsHandler:
+    path_to_backups = None
+    yearly = None
+    monthly = None
+    weekly = None
+    daily = None
+    verbose = False
+    dry_run = False
+
+
+    def __int__(self):
+        parser = argparse.ArgumentParser()
+        parser.add_argument("path", action="store", help="the path to the signal backups directory", metavar="Path")
+        parser.add_argument("pattern", action="store",
+                            help="amount of yearly, monthly, weekly and daily backups to keep, use '-' if using flags",
+                            metavar="YY-MM-WW-DD | -")
+        parser.add_argument("-y", "--yearly", action="store", type=int, required=False, dest="yearly")
+        parser.add_argument("-w", "--weekly", action="store", type=int, required=False, dest="weekly")
+        parser.add_argument("-m", "--monthly", action="store", type=int, required=False, dest="monthly")
+        parser.add_argument("-d", "--daily", action="store", type=int, required=False, dest="daily")
+        parser.add_argument("-v", "--verbose", action="store_true", dest="verbose")
+        parser.add_argument("--dry-run", action="store_true", dest="dry_run")
+
+        args = parser.parse_args()
+        path_to_backups = self.get_path_to_backups(path_arg=args.path)
+        self.get_increments(args=args)
+
+    def get_path_to_backups(self, path_arg):
+        path = Path(path_arg).resolve()
+        if not os.path.isdir(path):
+            raise InvalidPath("Path is not a directory")
+        elif len(os.listdir(path)) == 0:
+            raise InvalidPath("Directory is empty!")
+        else:
+            path_to_backups = path
+
+    def get_increments(self, args):
+        # Check if the pattern is either valid YY-MM-DD format or -
+        if not re.compile("(^([0-9]+)(-)([0-9]+)(-)([0-9]+)(-)([0-9]+)$)|(^-$)").match(args.pattern):
+            raise InvalidPattern("Invalid pattern format!")
+        elif args.pattern == "-":
+            if not args.yearly and not args.monthly and not args.weekly and not args.daily:
+                raise InvalidPattern("When using '-', the yearly, monthly, weekly and daily flags have to specified!")
+            else:
+                self.yearly = args.yearly
+                self.monthly = args.monthly
+                self.weekly = args.weekly
+                self.daily = args.daily
+        else:
+            path_args = args.path.split("-")
+            self.yearly = path_args[0]
+            self.monthly = path_args[1]
+            self.weekly = path_args[2]
+            self.daily = path_args[3]
+
+
+
+
 def filter_files(filename):
     is_file = os.path.isfile(os.path.join(path_to_backups, filename))
     is_backup = re.compile("(^).+\\.backup$").match(filename)
