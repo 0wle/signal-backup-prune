@@ -94,8 +94,8 @@ class DirectoryHelper:
         return is_file and is_backup
 
     @staticmethod
-    def get_size(path_to_backup, backup_files):
-        return sum([os.stat(os.path.join(path_to_backup, x)).st_size for x in backup_files])
+    def get_size(path_to_backup, files):
+        return sum([os.stat(os.path.join(path_to_backup, x)).st_size for x in files])
 
     @staticmethod
     def filter_files_for_deletion(yearly, monthly, daily, file_list):
