@@ -25,8 +25,9 @@ class ArgsHandler:
     yearly = None
     monthly = None
     daily = None
-    verbose = False
     dry_run = False
+    formatted = True
+    quiet = False
 
     def __init__(self):
         parser = argparse.ArgumentParser()
@@ -37,24 +38,18 @@ class ArgsHandler:
         parser.add_argument("-y", "--yearly", action="store", type=int, required=False, dest="yearly")
         parser.add_argument("-m", "--monthly", action="store", type=int, required=False, dest="monthly")
         parser.add_argument("-d", "--daily", action="store", type=int, required=False, dest="daily")
-        parser.add_argument("-v", "--verbose", action="store_true", dest="verbose")
-        parser.add_argument("--dry-run", action="store_true", dest="dry_run")
+        parser.add_argument("--dry-run", help="execute a dry run", action="store_true", dest="dry_run")
+        parser.add_argument("-u", "--not-formatted", action="store_false",
+                            help="quiet output except list of files without format", required=False, dest="formatted")
+        parser.add_argument("-q", "--quiet", action="store_true", help="quiet operation", dest="quiet")
 
         args = parser.parse_args()
-        self.__get_path_to_backups(path_arg=args.path)
         self.__get_increments(args=args)
 
         self.dry_run = args.dry_run
-        self.verbose = args.verbose
-
-    def __get_path_to_backups(self, path_arg):
-        path = Path(path_arg).resolve()
-        if not os.path.isdir(path):
-            raise InvalidPath("Path is not a directory")
-        elif len(os.listdir(path)) == 0:
-            raise InvalidPath("Directory is empty!")
-        else:
-            self.path_to_backups = path
+        self.formatted = args.formatted
+        self.quiet = args.quiet
+        self.path_to_backups = DirectoryHelper.get_path(args.path)
 
     def __get_increments(self, args):
         # Check if the pattern is either valid YY-MM-DD format or -
@@ -106,18 +101,15 @@ class DirectoryHelper:
         monthly_files_counter = 0
         yearly_files_counter = 0
         files_to_delete = []
-        print(sorted_list)
         for i in range(1, len(sorted_list)):
             if not daily_files_counter == daily and int(current[15:17]) != int(sorted_list[i][15:17]):
                 current = sorted_list[i]
                 daily_files_counter += 1
                 continue
-
             elif not monthly_files_counter == monthly and int(current[12:14]) != int(sorted_list[i][12:14]):
                 current = sorted_list[i]
                 monthly_files_counter += 1
                 continue
-
             elif not yearly_files_counter == yearly and int(current[7:11]) != int(sorted_list[i][7:11]):
                 current = sorted_list[i]
                 yearly_files_counter += 1
@@ -128,12 +120,40 @@ class DirectoryHelper:
 
         return files_to_delete
 
+    @staticmethod
+    def delete(path_to_dir, files):
+        [os.remove(os.path.join(path_to_dir, file)) for file in files]
+
+    @staticmethod
+    def get_path(path_arg):
+        path = Path(path_arg).resolve()
+        if not os.path.isdir(path):
+            raise InvalidPath("Path is not a directory")
+        elif len(os.listdir(path)) == 0:
+            raise InvalidPath("Directory is empty!")
+        else:
+            return path
+
+
+class FileList(list):
+    formatted = True
+
+    def __init__(self, iterable, formatted):
+        super().__init__(iterable)
+        self.formatted = formatted
+
+    def __repr__(self):
+        if self.formatted:
+            print(' '.join(['\n' + x[0] if (x[1] % 4 == 0) else '\t' + x[0] for x in self]))
+            return ' '.join(['\n' + x[0] if (x[1] % 4 == 0) else '\t' + x[0] for x in self])
+        else:
+            return '\n'.join(map(lambda x: x[0], self))
+
 
 if __name__ == '__main__':
     try:
         args_handler = ArgsHandler()
         backup_files = DirectoryHelper.get_backup_files(args_handler.path_to_backups)
-        # OutputHandler.print_init(args_handler)
         initial_size = DirectoryHelper.get_size(args_handler.path_to_backups, backup_files)
         files_to_be_deleted = DirectoryHelper.filter_files_for_deletion(
             yearly=args_handler.yearly,
@@ -141,14 +161,19 @@ if __name__ == '__main__':
             daily=args_handler.daily,
             file_list=backup_files
         )
-        #  TODO: clean this up by introducing an output helper
+        size_after = initial_size - DirectoryHelper.get_size(args_handler.path_to_backups, files_to_be_deleted)
         if args_handler.dry_run:
-            size_after = initial_size - DirectoryHelper.get_size(args_handler.path_to_backups, files_to_be_deleted)
-            print("Files that would be deleted:  ")
-            zipped = list(zip(files_to_be_deleted, range(len(files_to_be_deleted))))
-            print(' '.join(['\n' + x[0] if (x[1] % 4 == 0) else '\t' + x[0] for x in zipped]))
+            if not args_handler.quiet:
+                print("Files that would be deleted:  ")
+            files_for_deletion = FileList(zip(files_to_be_deleted,
+                                              range(len(files_to_be_deleted))), args_handler.formatted)
+            print(files_for_deletion)
+        else:
+            DirectoryHelper.delete(args_handler.path_to_backups, files_to_be_deleted)
+        if not args_handler.quiet:
             print("Size before deletion: " + str(initial_size / 1024 ** 3) + "GB \t" + "Size after deletion: " + str(
                 size_after / 1024 ** 3) + "GB")
+            print("Files total: " + str(len(files_to_be_deleted)))
 
     except InvalidPath as path_error:
         print("Specified path exception: ", path_error.value)
